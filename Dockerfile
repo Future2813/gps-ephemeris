@@ -1,9 +1,10 @@
 # 使用 Alpine 基础镜像
 FROM python:3.12-alpine AS builder
 
-# 安装 RTKLIB 编译依赖
+# 安装 RTKLIB 编译依赖（仅 gcc，不用 build-base 以节省空间）
 RUN apk add --no-cache \
-    build-base \
+    gcc \
+    musl-dev \
     curl \
     tar \
     linux-headers
