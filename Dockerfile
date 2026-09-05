@@ -9,7 +9,7 @@ RUN apk add --no-cache \
     tar \
     linux-headers
 
-# 下载 RTKLIB 源码（改用 master 分支）
+# 下载 RTKLIB 源码（使用 rtklibexplorer/RTKLIB 的 master 分支，支持 RINEX 4）
 RUN for i in $(seq 1 10); do \
         echo "尝试下载 RTKLIB (第 $i 次)..." && \
         curl -L -f --retry 3 --retry-delay 5 --retry-all-errors \
@@ -19,7 +19,8 @@ RUN for i in $(seq 1 10); do \
         && [ -s /tmp/rtklib.tar.gz ] && break || \
         { echo "下载失败，5秒后重试..."; sleep 5; }; \
     done && \
-    ls -lh /tmp/rtklib.tar.gz
+    ls -lh /tmp/rtklib.tar.gz && \
+    file /tmp/rtklib.tar.gz   # 添加这行检查文件类型，便于调试
 
 # 编译 RTKLIB（convbin + str2str）
 RUN tar -xzf /tmp/rtklib.tar.gz -C /tmp \
