@@ -94,9 +94,20 @@ def _decompress(data: bytes, filename: str) -> bytes:
     return data
 
 
+def _is_html_content(data: bytes, content_type: str = "") -> bool:
+    """检查内容是否为 HTML 页面（登录页、错误页等）"""
+    if content_type and "html" in content_type.lower():
+        return True
+    # 检查前 512 字节是否以 HTML 标签开头
+    head = data[:512].lstrip()
+    if head[:1].lower() == b"<" and (b"html" in head[:20].lower() or b"<!doctype" in head[:20].lower()):
+        return True
+    return False
+
+
 def download_http(url: str, username: Optional[str], password: Optional[str],
                   timeout: int = 60) -> tuple[bool, bytes, str]:
-    """通过 HTTP/HTTPS 下载文件"""
+    """通过 HTTP/HTTPS 下载文件，自动拒绝 HTML 页面"""
     headers = {}
     auth = None
     if username and password:
@@ -104,9 +115,12 @@ def download_http(url: str, username: Optional[str], password: Optional[str],
     try:
         with httpx.Client(timeout=timeout, follow_redirects=True, verify=False) as client:
             resp = client.get(url, auth=auth, headers=headers)
-            if resp.status_code == 200:
-                return True, resp.content, "OK"
-            return False, b"", f"HTTP {resp.status_code}"
+            if resp.status_code != 200:
+                return False, b"", f"HTTP {resp.status_code}"
+            content_type = resp.headers.get("content-type", "")
+            if _is_html_content(resp.content, content_type):
+                return False, b"", "下载内容为 HTML 页面（可能需要登录或 URL 错误）"
+            return True, resp.content, "OK"
     except Exception as e:
         return False, b"", f"下载异常: {e}"
 
@@ -149,22 +163,40 @@ def download_from_source(source, dt: datetime) -> tuple[bool, Optional[str], str
 
     logger.info("从 %s 下载: %s", source.name, url)
 
-    if source.protocol in ("http", "https"):
-        ok, data, msg = download_http(url, source.username, source.password)
-    elif source.protocol == "ftp":
-        ok, data, msg = download_ftp(url, source.username, source.password)
-    else:
-        return False, None, f"不支持的协议: {source.protocol}"
+    # 构建尝试的 URL 列表：原始 URL + .gz 后缀
+    urls_to_try = [url]
+    if not url.lower().endswith(".gz") and not url.lower().endswith(".z"):
+        urls_to_try.append(url + ".gz")
+
+    ok = False
+    data = b""
+    msg = ""
+    used_url = url
+
+    for try_url in urls_to_try:
+        if source.protocol in ("http", "https"):
+            ok, data, msg = download_http(try_url, source.username, source.password)
+        elif source.protocol == "ftp":
+            ok, data, msg = download_ftp(try_url, source.username, source.password)
+        else:
+            return False, None, f"不支持的协议: {source.protocol}"
+        if ok:
+            used_url = try_url
+            break
+        logger.warning("下载 %s 失败: %s", try_url, msg)
 
     if not ok:
         return False, None, msg
 
-    # 解压
-    data = _decompress(data, filename)
+    # 根据实际下载的 URL 更新文件名和解压
+    actual_filename = os.path.basename(urlparse(used_url).path)
+    data = _decompress(data, actual_filename)
 
-    # 如果是 .Z 解压后，调整扩展名
+    # 如果是 .Z/.gz 解压后，调整扩展名
     if local_path.lower().endswith(".z"):
         local_path = local_path[:-2]
+    elif local_path.lower().endswith(".gz"):
+        local_path = local_path[:-3]
 
     with open(local_path, "wb") as f:
         f.write(data)

@@ -44,6 +44,17 @@ def _find_rtklib_tool(name: str) -> Optional[str]:
     return None
 
 
+def _is_valid_rinex(filepath: str) -> bool:
+    """检查文件是否为有效的 RINEX 格式（头部包含 RINEX VERSION）"""
+    try:
+        with open(filepath, "rb") as f:
+            head = f.read(200)
+        # RINEX 文件头部应包含 "RINEX VERSION"
+        return b"RINEX VERSION" in head
+    except Exception:
+        return False
+
+
 def convert_rinex_to_rtcm3(rinex_path: str, output_path: str) -> tuple[bool, str]:
     """将 RINEX 导航文件转换为 RTCM3
 
@@ -57,11 +68,40 @@ def convert_rinex_to_rtcm3(rinex_path: str, output_path: str) -> tuple[bool, str
     if not os.path.exists(rinex_path):
         return False, f"输入文件不存在: {rinex_path}"
 
+    # 检查文件是否为空
+    if os.path.getsize(rinex_path) == 0:
+        return False, f"输入文件为空: {rinex_path}"
+
+    # 检查是否为有效 RINEX 文件
+    if not _is_valid_rinex(rinex_path):
+        # 读取前 200 字节用于诊断
+        try:
+            with open(rinex_path, "rb") as f:
+                head = f.read(200)
+            preview = head[:100].decode("utf-8", errors="replace")
+        except Exception:
+            preview = "<无法读取>"
+        return False, f"文件不是有效的 RINEX 格式。前100字节: {preview}"
+
     convbin = _find_rtklib_tool("convbin")
     str2str = _find_rtklib_tool("str2str")
 
-    # 优先使用 str2str（RTKLIB 的格式转换工具，明确支持 RTCM3 输出）
-    # 使用 #格式 后缀显式指定输入输出格式，避免扩展名歧义
+    # 优先使用 convbin（对广播星历导航文件支持更好）
+    if convbin:
+        if os.path.exists(output_path):
+            os.remove(output_path)
+        ok, msg = _run_cmd([
+            convbin,
+            "-r", "rinex",
+            "-o", output_path,
+            rinex_path,
+        ], timeout=180)
+        if ok and os.path.exists(output_path) and os.path.getsize(output_path) > 0:
+            logger.info("convbin 转换成功: %s -> %s", rinex_path, output_path)
+            return True, "convbin 转换成功"
+        last_msg = msg
+
+    # 回退到 str2str
     if str2str:
         if os.path.exists(output_path):
             os.remove(output_path)
@@ -73,23 +113,10 @@ def convert_rinex_to_rtcm3(rinex_path: str, output_path: str) -> tuple[bool, str
         if ok and os.path.exists(output_path) and os.path.getsize(output_path) > 0:
             logger.info("str2str 转换成功: %s -> %s", rinex_path, output_path)
             return True, "str2str 转换成功"
-
-    # 回退到 convbin
-    if convbin:
-        if os.path.exists(output_path):
-            os.remove(output_path)
-        ok, msg = _run_cmd([
-            convbin,
-            "-r", "rinex",
-            "-o", output_path,
-            rinex_path,
-        ])
-        if ok and os.path.exists(output_path) and os.path.getsize(output_path) > 0:
-            logger.info("convbin 转换成功: %s -> %s", rinex_path, output_path)
-            return True, "convbin 转换成功"
+        last_msg = msg
 
     # 两个工具都没有
     if not convbin and not str2str:
         return False, "未找到 convbin 或 str2str，请确认 RTKLIB 已正确安装"
 
-    return False, f"转换失败: {msg}"
+    return False, f"转换失败: {last_msg}"

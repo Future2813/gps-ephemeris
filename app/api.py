@@ -147,7 +147,7 @@ def trigger_download(_: str = Depends(get_current_user)):
 
 
 # ---------- RTCM3 文件下载（供终端设备获取星历） ----------
-@router.get("/rtcm3/latest")
+@router.get("/remote/latest")
 def get_latest_rtcm3():
     """终端设备通过此接口获取最新 RTCM3 星历文件（无需登录）"""
     rtcm3_path = os.path.join(settings.rtcm3_dir, settings.rtcm3_output_name)
@@ -173,3 +173,80 @@ def get_rtcm3_info():
         "size": stat.st_size,
         "modified": datetime.fromtimestamp(stat.st_mtime).isoformat(),
     }
+
+
+# ---------- 星历实时状态 ----------
+def _parse_rinex_satellites(filepath: str) -> dict:
+    """解析 RINEX 导航文件，统计各系统卫星数量
+
+    Returns:
+        {"G": count, "R": count, "E": count, "C": count}
+    """
+    sats = {"G": set(), "R": set(), "E": set(), "C": set()}
+    system_map = {"G": "GPS", "R": "GLONASS", "E": "Galileo", "C": "BeiDou"}
+    try:
+        with open(filepath, "r", encoding="utf-8", errors="ignore") as f:
+            for line in f:
+                # RINEX 3.x 导航记录行首为卫星 PRN，如 "G01" "R05" "E12" "C07"
+                if len(line) >= 3 and line[0] in system_map and line[1:3].isdigit():
+                    sats[line[0]].add(line[:3])
+    except Exception:
+        pass
+    return {
+        "GPS": len(sats["G"]),
+        "GLONASS": len(sats["R"]),
+        "Galileo": len(sats["E"]),
+        "BeiDou": len(sats["C"]),
+    }
+
+
+def _get_latest_rinex() -> Optional[str]:
+    """获取最新的 RINEX 星历文件路径"""
+    if not os.path.isdir(settings.ephemeris_dir):
+        return None
+    files = [
+        f for f in os.listdir(settings.ephemeris_dir)
+        if f.lower().endswith((".rnx", ".nav", ".n", ".gz", ".z"))
+    ]
+    if not files:
+        return None
+    files.sort(key=lambda f: os.path.getmtime(os.path.join(settings.ephemeris_dir, f)), reverse=True)
+    return os.path.join(settings.ephemeris_dir, files[0])
+
+
+@router.get("/ephemeris/status")
+def get_ephemeris_status():
+    """获取星历实时状态（无需登录，供终端和页面查询）"""
+    result = {
+        "available": False,
+        "rinex_file": None,
+        "rinex_size": None,
+        "rinex_modified": None,
+        "rtcm3_file": None,
+        "rtcm3_size": None,
+        "rtcm3_modified": None,
+        "satellites": {"GPS": 0, "GLONASS": 0, "Galileo": 0, "BeiDou": 0},
+        "age_minutes": None,
+    }
+
+    # RTCM3 文件
+    rtcm3_path = os.path.join(settings.rtcm3_dir, settings.rtcm3_output_name)
+    if os.path.exists(rtcm3_path):
+        stat = os.stat(rtcm3_path)
+        result["rtcm3_file"] = settings.rtcm3_output_name
+        result["rtcm3_size"] = stat.st_size
+        result["rtcm3_modified"] = datetime.fromtimestamp(stat.st_mtime).isoformat()
+        age = (datetime.now().timestamp() - stat.st_mtime) / 60
+        result["age_minutes"] = round(age, 1)
+
+    # RINEX 文件
+    rinex_path = _get_latest_rinex()
+    if rinex_path and os.path.exists(rinex_path):
+        stat = os.stat(rinex_path)
+        result["rinex_file"] = os.path.basename(rinex_path)
+        result["rinex_size"] = stat.st_size
+        result["rinex_modified"] = datetime.fromtimestamp(stat.st_mtime).isoformat()
+        result["satellites"] = _parse_rinex_satellites(rinex_path)
+        result["available"] = True
+
+    return result

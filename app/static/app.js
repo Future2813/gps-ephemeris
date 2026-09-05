@@ -102,6 +102,44 @@ document.querySelectorAll(".nav-item").forEach((el) => {
 });
 
 // ---------- 概览 ----------
+async function loadEphemerisStatus() {
+  try {
+    const eph = await api("/ephemeris/status");
+    const avail = document.getElementById("eph-availability");
+    if (eph.available) {
+      avail.className = "badge badge-success";
+      avail.textContent = "就绪";
+    } else {
+      avail.className = "badge badge-none";
+      avail.textContent = "未就绪";
+    }
+
+    // 卫星数量
+    document.getElementById("sat-gps").textContent = eph.satellites?.GPS ?? 0;
+    document.getElementById("sat-glo").textContent = eph.satellites?.GLONASS ?? 0;
+    document.getElementById("sat-gal").textContent = eph.satellites?.Galileo ?? 0;
+    document.getElementById("sat-bds").textContent = eph.satellites?.BeiDou ?? 0;
+
+    // 文件信息
+    document.getElementById("eph-rinex-file").textContent = eph.rinex_file || "--";
+    document.getElementById("eph-rinex-size").textContent = fmtSize(eph.rinex_size);
+    document.getElementById("eph-rtcm3-size").textContent = fmtSize(eph.rtcm3_size);
+
+    // 星历年龄
+    const ageEl = document.getElementById("eph-age");
+    if (eph.age_minutes != null) {
+      ageEl.textContent = eph.age_minutes + " 分钟前";
+      ageEl.className = "eph-value " + (eph.age_minutes < 180 ? "fresh" : "stale");
+    } else {
+      ageEl.textContent = "--";
+      ageEl.className = "eph-value";
+    }
+
+    // 更新时间
+    document.getElementById("eph-modified").textContent = fmtTime(eph.rtcm3_modified || eph.rinex_modified);
+  } catch {}
+}
+
 async function loadDashboard() {
   try {
     const s = await api("/status");
@@ -112,6 +150,7 @@ async function loadDashboard() {
       ? '<span class="badge badge-running">运行中</span>'
       : '<span class="badge badge-none">未运行</span>';
   } catch {}
+  loadEphemerisStatus();
 }
 
 document.getElementById("manual-download-btn").addEventListener("click", async () => {
@@ -137,7 +176,6 @@ document.getElementById("manual-download-btn").addEventListener("click", async (
     loadDashboard();
   }
 });
-
 // ---------- 数据源管理 ----------
 async function loadSources() {
   try {

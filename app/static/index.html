@@ -61,16 +61,72 @@
 
       <div class="panel">
         <div class="panel-header">
+          <h3>实时星历状态</h3>
+          <span id="eph-availability" class="badge badge-none">未就绪</span>
+        </div>
+        <div id="eph-status-body">
+          <div class="eph-grid">
+            <div class="eph-sat-card">
+              <div class="eph-sat-icon gps">🛰️</div>
+              <div class="eph-sat-name">GPS</div>
+              <div class="eph-sat-count" id="sat-gps">--</div>
+            </div>
+            <div class="eph-sat-card">
+              <div class="eph-sat-icon glo">🛰️</div>
+              <div class="eph-sat-name">GLONASS</div>
+              <div class="eph-sat-count" id="sat-glo">--</div>
+            </div>
+            <div class="eph-sat-card">
+              <div class="eph-sat-icon gal">🛰️</div>
+              <div class="eph-sat-name">Galileo</div>
+              <div class="eph-sat-count" id="sat-gal">--</div>
+            </div>
+            <div class="eph-sat-card">
+              <div class="eph-sat-icon bds">🛰️</div>
+              <div class="eph-sat-name">BeiDou</div>
+              <div class="eph-sat-count" id="sat-bds">--</div>
+            </div>
+          </div>
+          <div class="eph-details">
+            <div class="eph-detail-row">
+              <span class="eph-label">RINEX 文件：</span>
+              <span id="eph-rinex-file" class="eph-value">--</span>
+            </div>
+            <div class="eph-detail-row">
+              <span class="eph-label">RINEX 大小：</span>
+              <span id="eph-rinex-size" class="eph-value">--</span>
+            </div>
+            <div class="eph-detail-row">
+              <span class="eph-label">RTCM3 大小：</span>
+              <span id="eph-rtcm3-size" class="eph-value">--</span>
+            </div>
+            <div class="eph-detail-row">
+              <span class="eph-label">星历年龄：</span>
+              <span id="eph-age" class="eph-value">--</span>
+            </div>
+            <div class="eph-detail-row">
+              <span class="eph-label">更新时间：</span>
+              <span id="eph-modified" class="eph-value">--</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
           <h3>操作</h3>
           <div class="panel-actions">
             <button id="manual-download-btn" class="btn btn-primary">立即下载并转换</button>
-            <a id="download-rtcm3-btn" class="btn" href="/api/rtcm3/latest" target="_blank">下载 RTCM3 文件</a>
+            <a id="download-rtcm3-btn" class="btn" href="/api/remote/latest" target="_blank">下载 RTCM3 文件</a>
           </div>
         </div>
         <div id="operation-result" class="operation-result"></div>
         <div class="info-box">
           <strong>终端设备获取星历接口：</strong>
-          <code>GET /api/rtcm3/latest</code> — 返回最新 RTCM3 广播星历文件
+          <code>GET /api/remote/latest</code> — 返回最新 RTCM3 广播星历文件
+          <br>
+          <strong>星历状态接口：</strong>
+          <code>GET /api/ephemeris/status</code> — 返回各系统卫星数与文件状态
           <br>
           <strong>文件信息接口：</strong>
           <code>GET /api/rtcm3/info</code> — 返回文件可用性与大小

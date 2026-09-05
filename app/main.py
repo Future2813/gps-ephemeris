@@ -25,19 +25,21 @@ scheduler = BackgroundScheduler(timezone="Asia/Shanghai")
 
 
 def seed_default_sources():
-    """初始化内置数据源：IGS、BKG、武汉 IGS"""
+    """初始化内置数据源：BKG、武汉 IGS、IGS (CDDIS)
+    优先级：免认证的 BKG 和武汉 IGS 优先，需要账号的 CDDIS 最后
+    """
     db = SessionLocal()
     try:
         defaults = [
             {
-                "name": "IGS (CDDIS)",
-                "protocol": "https",
-                "url_template": "https://cddis.nasa.gov/archive/gnss/data/daily/{year}/{doy}/{yy}n/BRDC00IGS_R_{year}{doy}0000_01D_MN.rnx",
-                "username": "",
-                "password": "",
+                "name": "武汉 IGS (CDIS)",
+                "protocol": "ftp",
+                "url_template": "ftp://igs.gnsswhu.cn/pub/gnss/data/daily/{year}/{doy}/{yy}n/BRDC00WUH_R_{year}{doy}0000_01D_MN.rnx",
+                "username": "anonymous",
+                "password": "anonymous@",
                 "enabled": True,
                 "priority": 1,
-                "remark": "NASA CDDIS 全球 IGS 合并广播星历（多系统）。需要 Earthdata 账号，在上方填写用户名密码",
+                "remark": "武汉大学 IGS 数据中心广播星历，国内最快，匿名 FTP 访问",
             },
             {
                 "name": "BKG",
@@ -47,24 +49,41 @@ def seed_default_sources():
                 "password": "",
                 "enabled": True,
                 "priority": 2,
-                "remark": "德国 BKG 提供的 IGS 广播星历，通常无需登录",
+                "remark": "德国 BKG 提供的 IGS 广播星历，无需登录",
             },
             {
-                "name": "武汉 IGS (CDIS)",
+                "name": "IGN (法国)",
                 "protocol": "ftp",
-                "url_template": "ftp://igs.gnsswhu.cn/pub/gnss/data/daily/{year}/{doy}/{yy}n/BRDC00WUH_R_{year}{doy}0000_01D_MN.rnx",
+                "url_template": "ftp://igs.ign.fr/pub/igs/data/BRDC/{year}/{doy}/BRDC00IGS_R_{year}{doy}0000_01D_MN.rnx",
                 "username": "anonymous",
                 "password": "anonymous@",
                 "enabled": True,
                 "priority": 3,
-                "remark": "武汉大学 IGS 数据中心广播星历，匿名 FTP 访问",
+                "remark": "法国 IGN 地理信息局，匿名 FTP，作为备用数据源",
+            },
+            {
+                "name": "IGS (CDDIS)",
+                "protocol": "https",
+                "url_template": "https://cddis.nasa.gov/archive/gnss/data/daily/{year}/{doy}/{yy}n/BRDC00IGS_R_{year}{doy}0000_01D_MN.rnx",
+                "username": "",
+                "password": "",
+                "enabled": True,
+                "priority": 4,
+                "remark": "NASA CDDIS 全球 IGS 合并广播星历，需要 Earthdata 账号",
             },
         ]
         for ds in defaults:
-            exists = db.query(DataSource).filter(DataSource.name == ds["name"]).first()
-            if not exists:
+            existing = db.query(DataSource).filter(DataSource.name == ds["name"]).first()
+            if not existing:
                 db.add(DataSource(**ds))
                 logger.info("已添加内置数据源: %s", ds["name"])
+            else:
+                # 更新内置数据源的 URL 和优先级（保留用户的账号密码设置）
+                existing.url_template = ds["url_template"]
+                existing.protocol = ds["protocol"]
+                existing.priority = ds["priority"]
+                existing.remark = ds["remark"]
+                logger.info("已更新内置数据源: %s", ds["name"])
         # 确保系统状态记录存在
         if not db.query(SystemStatus).first():
             db.add(SystemStatus(id=1))
