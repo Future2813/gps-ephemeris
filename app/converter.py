@@ -92,7 +92,7 @@ def convert_rinex_to_rtcm3(rinex_path: str, output_path: str) -> tuple[bool, str
             os.remove(output_path)
         ok, msg = _run_cmd([
             convbin,
-            "-r", "rinex",
+            "-r", "0",
             "-o", output_path,
             rinex_path,
         ], timeout=180)

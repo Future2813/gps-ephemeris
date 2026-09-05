@@ -9,21 +9,22 @@ RUN apk add --no-cache \
     tar \
     linux-headers
 
-# 下载 RTKLIB 源码（单独一步，便于 Docker 缓存，下载成功后不用重下）
+# 下载 RTKLIB 源码（改为 rtklibexplorer/RTKLIB 的 b34L 分支，支持 RINEX 4）
 RUN for i in $(seq 1 10); do \
         echo "尝试下载 RTKLIB (第 $i 次)..." && \
         curl -L --retry 3 --retry-delay 5 --retry-all-errors \
              --connect-timeout 30 --max-time 300 \
              -o /tmp/rtklib.tar.gz \
-             https://github.com/tomojitakasu/RTKLIB/archive/refs/heads/rtklib_2.4.3.tar.gz \
+             https://github.com/rtklibexplorer/RTKLIB/archive/refs/heads/b34L.tar.gz \
         && [ -s /tmp/rtklib.tar.gz ] && break || \
         { echo "下载失败，5秒后重试..."; sleep 5; }; \
     done && \
     ls -lh /tmp/rtklib.tar.gz
 
 # 编译 RTKLIB（convbin + str2str）
+# 注意：解压后的目录名变为 RTKLIB-b34L（依据实际下载的压缩包内部结构）
 RUN tar -xzf /tmp/rtklib.tar.gz -C /tmp \
-    && mv /tmp/RTKLIB-rtklib_2.4.3 /tmp/rtklib \
+    && mv /tmp/RTKLIB-b34L /tmp/rtklib \
     && cd /tmp/rtklib/src \
     && find . -name "*.c" -print0 | xargs -0 gcc -c -O2 -Wall -Wno-unused-but-set-variable -Wno-unused-variable -Wno-stringop-truncation -Wno-format-overflow \
          -DENAGLO -DENAGAL -DENAQZS -DENACMP -DENAIRN \
