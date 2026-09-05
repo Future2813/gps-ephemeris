@@ -5,22 +5,14 @@ FROM python:3.12-alpine AS builder
 RUN apk add --no-cache \
     gcc \
     musl-dev \
-    curl \
     tar \
     linux-headers
 
-# 下载 RTKLIB 源码（使用 rtklibexplorer/RTKLIB 的 master 分支，支持 RINEX 4）
-RUN for i in $(seq 1 10); do \
-        echo "尝试下载 RTKLIB (第 $i 次)..." && \
-        curl -L -f --retry 3 --retry-delay 5 --retry-all-errors \
-             --connect-timeout 30 --max-time 300 \
-             -o /tmp/rtklib.tar.gz \
-             https://github.com/rtklibexplorer/RTKLIB/archive/refs/heads/master.tar.gz \
-        && [ -s /tmp/rtklib.tar.gz ] && break || \
-        { echo "下载失败，5秒后重试..."; sleep 5; }; \
-    done && \
-    ls -lh /tmp/rtklib.tar.gz && \
-    file /tmp/rtklib.tar.gz   # 添加这行检查文件类型，便于调试
+# 复制本地下载好的源码包（不再使用 curl 下载）
+COPY rtklib-master.tar.gz /tmp/rtklib.tar.gz
+
+# 验证文件是否为 gzip（可选）
+RUN file /tmp/rtklib.tar.gz
 
 # 编译 RTKLIB（convbin + str2str）
 RUN tar -xzf /tmp/rtklib.tar.gz -C /tmp \
@@ -51,23 +43,16 @@ RUN apk add --no-cache \
     libstdc++ \
     gzip
 
-# 从 builder 阶段复制 RTKLIB 二进制
 COPY --from=builder /usr/local/bin/convbin /usr/local/bin/convbin
 COPY --from=builder /usr/local/bin/str2str /usr/local/bin/str2str
 
-# 设置时区
 ENV TZ=Asia/Shanghai
-
 WORKDIR /app
 
-# 安装 Python 依赖
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# 复制应用代码
 COPY app/ ./app/
-
-# 创建数据目录
 RUN mkdir -p /app/data/ephemeris /app/data/rtcm3 /app/data/logs
 
 EXPOSE 8000
