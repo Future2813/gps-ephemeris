@@ -1,7 +1,10 @@
-# 改用 Debian slim 基础镜像（兼容 glibc，以便运行 gfzrnx）
+# 使用清华源加速 apt 安装，并设置基础镜像
 FROM python:3.12-slim AS builder
 
-# 安装编译依赖（Debian 包管理）
+# 替换为国内镜像源（清华源），加速系统包下载
+RUN sed -i 's/deb.debian.org/mirrors.tuna.tsinghua.edu.cn/g' /etc/apt/sources.list.d/debian.sources
+
+# 安装编译依赖
 RUN apt-get update && apt-get install -y \
     gcc \
     make \
@@ -10,10 +13,11 @@ RUN apt-get update && apt-get install -y \
     libc6-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# 下载 RTKLIB 源码包（官方 2.4.3）
-RUN wget -q --tries=5 --timeout=30 \
+# 下载 RTKLIB 源码包（官方 2.4.3），增加重试和超时
+RUN wget -q --tries=10 --timeout=60 \
     https://github.com/tomojitakasu/RTKLIB/archive/refs/tags/2.4.3.tar.gz \
-    -O /tmp/rtklib.tar.gz
+    -O /tmp/rtklib.tar.gz || \
+    (echo "Failed to download RTKLIB from GitHub, please check network or manually place the file" && exit 1)
 
 # 编译 RTKLIB（解压后目录名为 RTKLIB-2.4.3）
 RUN tar -xzf /tmp/rtklib.tar.gz -C /tmp \
@@ -31,17 +35,19 @@ RUN tar -xzf /tmp/rtklib.tar.gz -C /tmp \
     && cp str2str /usr/local/bin/ \
     && rm -rf /tmp/rtklib /tmp/rtklib.tar.gz
 
-# 下载 gfzrnx（约 2MB，glibc 静态编译）
-RUN wget -q --tries=5 --timeout=30 \
+# 下载 gfzrnx（约 2MB），同样增加重试和超时
+RUN wget -q --tries=10 --timeout=60 \
     https://download.gfz-potsdam.de/gnss/products/GFZRNX/GFZRNX_linux_64bit.tar.gz \
-    -O /tmp/gfzrnx.tar.gz \
+    -O /tmp/gfzrnx.tar.gz || \
+    (echo "Failed to download gfzrnx from GFZ, please check network or manually place the file" && exit 1) \
     && tar -xzf /tmp/gfzrnx.tar.gz -C /tmp \
     && cp /tmp/gfzrnx /usr/local/bin/ \
     && chmod +x /usr/local/bin/gfzrnx \
     && rm -rf /tmp/gfzrnx.tar.gz /tmp/gfzrnx
 
-# 最终运行阶段
+# 最终运行阶段（同样使用清华源）
 FROM python:3.12-slim
+RUN sed -i 's/deb.debian.org/mirrors.tuna.tsinghua.edu.cn/g' /etc/apt/sources.list.d/debian.sources
 
 # 安装运行时依赖
 RUN apt-get update && apt-get install -y \
@@ -58,9 +64,9 @@ COPY --from=builder /usr/local/bin/convbin /usr/local/bin/convbin
 COPY --from=builder /usr/local/bin/str2str /usr/local/bin/str2str
 COPY --from=builder /usr/local/bin/gfzrnx /usr/local/bin/gfzrnx
 
-# 安装 Python 依赖
+# 安装 Python 依赖（使用清华 PyPI 镜像加速）
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
 
 COPY app/ ./app/
 RUN mkdir -p /app/data/ephemeris /app/data/rtcm3 /app/data/logs
