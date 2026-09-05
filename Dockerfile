@@ -28,15 +28,12 @@ RUN git clone --depth 1 -b rtklib_2.4.3 https://github.com/tomojitakasu/RTKLIB.g
 FROM python:3.12-alpine
 
 # 安装运行时依赖
-# ncompress（用于解压 .Z 文件）在 community 仓库，显式指定 edge community 源
 RUN apk add --no-cache \
-    --repository=http://dl-cdn.alpinelinux.org/alpine/edge/community/ \
-    ncompress \
-    && apk add --no-cache \
     tzdata \
     curl \
     ca-certificates \
-    libstdc++
+    libstdc++ \
+    gzip
 
 # 从 builder 阶段复制 RTKLIB 二进制
 COPY --from=builder /usr/local/bin/convbin /usr/local/bin/convbin
