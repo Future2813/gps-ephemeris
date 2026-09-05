@@ -14,13 +14,11 @@ RUN apk add --no-cache \
 RUN curl -L --retry 5 --retry-delay 5 --connect-timeout 30 -o /tmp/rtklib.tar.gz https://github.com/tomojitakasu/RTKLIB/archive/refs/heads/rtklib_2.4.3.tar.gz \
     && tar -xzf /tmp/rtklib.tar.gz -C /tmp \
     && mv /tmp/RTKLIB-rtklib_2.4.3 /tmp/rtklib \
-    && echo "=== RTKLIB directory structure ===" \
-    && find /tmp/rtklib -name "convbin.c" -o -name "str2str.c" \
     && cd /tmp/rtklib/src \
-    && gcc -c -O2 -Wall -Wno-unused-but-set-variable -Wno-unused-variable \
+    && find . -name "*.c" -print0 | xargs -0 gcc -c -O2 -Wall -Wno-unused-but-set-variable -Wno-unused-variable -Wno-stringop-truncation -Wno-format-overflow \
          -DENAGLO -DENAGAL -DENAQZS -DENACMP -DENAIRN \
-         -I. *.c \
-    && ar rcs librtk.a *.o \
+         -I. \
+    && ar rcs librtk.a $(find . -name "*.o") \
     && CONVBIN_DIR=$(dirname $(find /tmp/rtklib -name convbin.c | head -1)) \
     && cd "$CONVBIN_DIR" \
     && gcc -O2 -Wall -I/tmp/rtklib/src -o convbin convbin.c -L/tmp/rtklib/src -lrtk -lm \
