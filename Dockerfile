@@ -13,16 +13,20 @@ RUN apk add --no-cache \
 RUN curl -L -o /tmp/rtklib.tar.gz https://github.com/tomojitakasu/RTKLIB/archive/refs/heads/rtklib_2.4.3.tar.gz \
     && tar -xzf /tmp/rtklib.tar.gz -C /tmp \
     && mv /tmp/RTKLIB-rtklib_2.4.3 /tmp/rtklib \
+    && echo "=== RTKLIB directory structure ===" \
+    && find /tmp/rtklib -name "convbin.c" -o -name "str2str.c" \
     && cd /tmp/rtklib/src \
     && gcc -c -O2 -Wall -Wno-unused-but-set-variable -Wno-unused-variable \
          -DENAGLO -DENAGAL -DENAQZS -DENACMP -DENAIRN \
          -I. *.c \
     && ar rcs librtk.a *.o \
-    && cd /tmp/rtklib/app/convbin \
-    && gcc -O2 -Wall -I../../src -o convbin convbin.c -L../../src -lrtk -lm \
+    && CONVBIN_DIR=$(dirname $(find /tmp/rtklib -name convbin.c | head -1)) \
+    && cd "$CONVBIN_DIR" \
+    && gcc -O2 -Wall -I/tmp/rtklib/src -o convbin convbin.c -L/tmp/rtklib/src -lrtk -lm \
     && cp convbin /usr/local/bin/ \
-    && cd /tmp/rtklib/app/str2str \
-    && gcc -O2 -Wall -I../../src -o str2str str2str.c -L../../src -lrtk -lm -lpthread \
+    && STR2STR_DIR=$(dirname $(find /tmp/rtklib -name str2str.c | head -1)) \
+    && cd "$STR2STR_DIR" \
+    && gcc -O2 -Wall -I/tmp/rtklib/src -o str2str str2str.c -L/tmp/rtklib/src -lrtk -lm -lpthread \
     && cp str2str /usr/local/bin/ \
     && rm -rf /tmp/rtklib /tmp/rtklib.tar.gz
 
