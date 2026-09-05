@@ -15,8 +15,8 @@ RUN for i in $(seq 1 10); do \
         curl -L --retry 3 --retry-delay 5 --retry-all-errors \
              --connect-timeout 30 --max-time 300 \
              -o /tmp/rtklib.tar.gz \
-https://ghproxy.com/https://github.com/tomojitakasu/RTKLIB/archive/refs/heads/rtklib_2.4.3.tar.gz
-&& [ -s /tmp/rtklib.tar.gz ] && break || \
+             https://github.com/tomojitakasu/RTKLIB/archive/refs/heads/rtklib_2.4.3.tar.gz \
+        && [ -s /tmp/rtklib.tar.gz ] && break || \
         { echo "下载失败，5秒后重试..."; sleep 5; }; \
     done && \
     ls -lh /tmp/rtklib.tar.gz

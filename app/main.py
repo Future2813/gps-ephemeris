@@ -34,7 +34,7 @@ def seed_default_sources():
             {
                 "name": "武汉 IGS (CDIS)",
                 "protocol": "ftp",
-                "url_template": "ftp://igs.gnsswhu.cn/pub/gnss/data/daily/{year}/{doy}/{yy}n/BRDC00WUH_R_{year}{doy}0000_01D_MN.rnx",
+                "url_template": "ftp://igs.gnsswhu.cn/pub/gnss/data/daily/{year}/{doy}/{yy}p/BRDC00IGS_R_{year}{doy}0000_01D_MN.rnx.gz",
                 "username": "anonymous",
                 "password": "anonymous@",
                 "enabled": True,
@@ -44,7 +44,7 @@ def seed_default_sources():
             {
                 "name": "BKG",
                 "protocol": "https",
-                "url_template": "https://igs.bkg.bund.de/root_ftp/IGS/BRDC/{year}/{doy}/BRDC00IGS_R_{year}{doy}0000_01D_MN.rnx",
+                "url_template": "https://igs.bkg.bund.de/root_ftp/IGS/BRDC/{year}/{doy}/BRDC00IGS_R_{year}{doy}0000_01D_MN.rnx.gz",
                 "username": "",
                 "password": "",
                 "enabled": True,
@@ -54,7 +54,7 @@ def seed_default_sources():
             {
                 "name": "IGN (法国)",
                 "protocol": "ftp",
-                "url_template": "ftp://igs.ign.fr/pub/igs/data/BRDC/{year}/{doy}/BRDC00IGS_R_{year}{doy}0000_01D_MN.rnx",
+                "url_template": "ftp://igs.ign.fr/pub/igs/data/{year}/{doy}/BRDC00IGS_R_{year}{doy}0000_01D_MN.rnx.gz",
                 "username": "anonymous",
                 "password": "anonymous@",
                 "enabled": True,
@@ -64,7 +64,7 @@ def seed_default_sources():
             {
                 "name": "IGS (CDDIS)",
                 "protocol": "https",
-                "url_template": "https://cddis.nasa.gov/archive/gnss/data/daily/{year}/{doy}/{yy}n/BRDC00IGS_R_{year}{doy}0000_01D_MN.rnx",
+                "url_template": "https://cddis.nasa.gov/archive/gnss/data/daily/{year}/{doy}/{yy}p/BRDC00IGS_R_{year}{doy}0000_01D_MN.rnx.gz",
                 "username": "",
                 "password": "",
                 "enabled": True,

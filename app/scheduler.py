@@ -1,7 +1,7 @@
 """调度器：定时下载星历并转换为 RTCM3"""
 import os
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Optional
 
 from sqlalchemy.orm import Session
@@ -48,27 +48,33 @@ def run_download_pipeline() -> dict:
             return {"success": False, "message": "没有启用的数据源"}
 
         # 按优先级依次尝试，直到成功
+        # 先试当天，再试前一天（IGS 通常在 UTC 01:00 后才发布当天的 BRDC）
+        dates_to_try = [now, now - timedelta(days=1)]
         rinex_path: Optional[str] = None
         used_source: Optional[DataSource] = None
 
-        for source in sources:
-            ok, path, msg = download_from_source(source, now)
-            if ok and path:
-                rinex_path = path
-                used_source = source
-                source.last_status = "success"
-                source.last_download_at = datetime.utcnow()
-                source.last_error = None
-                db.commit()
-                _log_download(db, source.name, "success", os.path.basename(path), msg)
+        for dt in dates_to_try:
+            if rinex_path:
                 break
-            else:
-                source.last_status = "failed"
-                source.last_download_at = datetime.utcnow()
-                source.last_error = msg
-                db.commit()
-                _log_download(db, source.name, "failed", None, msg)
-                logger.warning("数据源 %s 下载失败: %s", source.name, msg)
+            for source in sources:
+                ok, path, msg = download_from_source(source, dt)
+                if ok and path:
+                    rinex_path = path
+                    used_source = source
+                    source.last_status = "success"
+                    source.last_download_at = datetime.utcnow()
+                    source.last_error = None
+                    db.commit()
+                    _log_download(db, source.name, "success", os.path.basename(path), msg)
+                    logger.info("从 %s 下载成功（日期 %s）", source.name, dt.strftime("%Y-%m-%d"))
+                    break
+                else:
+                    source.last_status = "failed"
+                    source.last_download_at = datetime.utcnow()
+                    source.last_error = msg
+                    db.commit()
+                    _log_download(db, source.name, "failed", None, msg)
+                    logger.warning("数据源 %s 下载失败（日期 %s）: %s", source.name, dt.strftime("%Y-%m-%d"), msg)
 
         if not rinex_path or not used_source:
             return {"success": False, "message": "所有数据源均下载失败"}
