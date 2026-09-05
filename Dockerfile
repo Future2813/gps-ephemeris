@@ -15,7 +15,7 @@ RUN wget -q --tries=5 --timeout=30 \
     https://github.com/tomojitakasu/RTKLIB/archive/refs/tags/2.4.3.tar.gz \
     -O /tmp/rtklib.tar.gz
 
-# 编译 RTKLIB
+# 编译 RTKLIB（解压后目录名为 RTKLIB-2.4.3）
 RUN tar -xzf /tmp/rtklib.tar.gz -C /tmp \
     && mv /tmp/RTKLIB-2.4.3 /tmp/rtklib \
     && cd /tmp/rtklib/src \
