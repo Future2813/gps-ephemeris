@@ -9,10 +9,20 @@ RUN apk add --no-cache \
     tar \
     linux-headers
 
-# 下载 RTKLIB 源码 tarball 并编译（convbin + str2str 用于 RINEX -> RTCM3 转换）
-# 手动编译：先编译核心库 librtk.a，再编译 convbin 和 str2str
-RUN curl -L --retry 5 --retry-delay 5 --connect-timeout 30 -o /tmp/rtklib.tar.gz https://github.com/tomojitakasu/RTKLIB/archive/refs/heads/rtklib_2.4.3.tar.gz \
-    && tar -xzf /tmp/rtklib.tar.gz -C /tmp \
+# 下载 RTKLIB 源码（单独一步，便于 Docker 缓存，下载成功后不用重下）
+RUN for i in $(seq 1 10); do \
+        echo "尝试下载 RTKLIB (第 $i 次)..." && \
+        curl -L --retry 3 --retry-delay 5 --retry-all-errors \
+             --connect-timeout 30 --max-time 300 \
+             -o /tmp/rtklib.tar.gz \
+             https://github.com/tomojitakasu/RTKLIB/archive/refs/heads/rtklib_2.4.3.tar.gz \
+        && [ -s /tmp/rtklib.tar.gz ] && break || \
+        { echo "下载失败，5秒后重试..."; sleep 5; }; \
+    done && \
+    ls -lh /tmp/rtklib.tar.gz
+
+# 编译 RTKLIB（convbin + str2str）
+RUN tar -xzf /tmp/rtklib.tar.gz -C /tmp \
     && mv /tmp/RTKLIB-rtklib_2.4.3 /tmp/rtklib \
     && cd /tmp/rtklib/src \
     && find . -name "*.c" -print0 | xargs -0 gcc -c -O2 -Wall -Wno-unused-but-set-variable -Wno-unused-variable -Wno-stringop-truncation -Wno-format-overflow \
