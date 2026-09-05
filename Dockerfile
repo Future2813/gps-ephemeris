@@ -10,16 +10,14 @@ RUN apt-get update && apt-get install -y \
     libc6-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# 复制本地下载好的 RTKLIB 源码包（如果你已有，则使用 COPY）
-# 如果没有，可改为 wget 下载官方 2.4.3（稳定）
-COPY rtklib-master.tar.gz /tmp/rtklib.tar.gz
+# 下载 RTKLIB 源码包（官方 2.4.3）
+RUN wget -q --tries=5 --timeout=30 \
+    https://github.com/tomojitakasu/RTKLIB/archive/refs/tags/2.4.3.tar.gz \
+    -O /tmp/rtklib.tar.gz
 
-# 验证文件（可选）
-RUN file /tmp/rtklib.tar.gz
-
-# 编译 RTKLIB（与原有编译命令一致）
+# 编译 RTKLIB
 RUN tar -xzf /tmp/rtklib.tar.gz -C /tmp \
-    && mv /tmp/RTKLIB-master /tmp/rtklib \
+    && mv /tmp/RTKLIB-2.4.3 /tmp/rtklib \
     && cd /tmp/rtklib/src \
     && gcc -c -O2 -Wall -Wno-unused-but-set-variable -Wno-unused-variable -Wno-stringop-truncation -Wno-format-overflow \
          -DENAGLO -DENAGAL -DENAQZS -DENACMP -DENAIRN \
