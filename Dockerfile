@@ -11,7 +11,7 @@ RUN apk add --no-cache \
 
 # 下载 RTKLIB 源码 tarball 并编译（convbin + str2str 用于 RINEX -> RTCM3 转换）
 # 手动编译：先编译核心库 librtk.a，再编译 convbin 和 str2str
-RUN curl -L -o /tmp/rtklib.tar.gz https://github.com/tomojitakasu/RTKLIB/archive/refs/heads/rtklib_2.4.3.tar.gz \
+RUN curl -L -o /tmp/rtklib.tar.gz https://ghproxy.com/https://github.com/tomojitakasu/RTKLIB/archive/refs/heads/rtklib_2.4.3.tar.gz \
     && tar -xzf /tmp/rtklib.tar.gz -C /tmp \
     && mv /tmp/RTKLIB-rtklib_2.4.3 /tmp/rtklib \
     && echo "=== RTKLIB directory structure ===" \
