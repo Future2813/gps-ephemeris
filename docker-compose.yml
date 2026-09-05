@@ -1,0 +1,25 @@
+services:
+  ephemeris-service:
+    build: .
+    container_name: gps-ephemeris-service
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - ephemeris_data:/app/data
+      - ephemeris_db:/app/db
+    environment:
+      - TZ=Asia/Shanghai
+      - ADMIN_USERNAME=admin
+      - ADMIN_PASSWORD=admin123
+      - SECRET_KEY=change-this-to-a-random-secret-key
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+volumes:
+  ephemeris_data:
+  ephemeris_db:

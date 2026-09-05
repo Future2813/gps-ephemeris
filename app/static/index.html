@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GPS 广播星历下载服务</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<!-- 登录页 -->
+<div id="login-page" class="login-page">
+  <div class="login-box">
+    <h1>GPS 星历服务</h1>
+    <p class="subtitle">广播星历下载 / RTCM3 转换</p>
+    <form id="login-form">
+      <input type="text" id="username" placeholder="用户名" required>
+      <input type="password" id="password" placeholder="密码" required>
+      <button type="submit">登 录</button>
+      <p id="login-msg" class="error-msg"></p>
+    </form>
+  </div>
+</div>
+
+<!-- 主界面 -->
+<div id="main-page" class="hidden">
+  <header class="topbar">
+    <div class="brand">GPS 广播星历下载服务</div>
+    <nav class="nav">
+      <a href="#" class="nav-item active" data-tab="dashboard">概览</a>
+      <a href="#" class="nav-item" data-tab="sources">数据源</a>
+      <a href="#" class="nav-item" data-tab="logs">下载日志</a>
+    </nav>
+    <div class="user-area">
+      <span id="current-user"></span>
+      <button id="logout-btn" class="btn btn-sm">退出</button>
+    </div>
+  </header>
+
+  <main class="content">
+    <!-- 概览 -->
+    <section id="tab-dashboard" class="tab-pane active">
+      <div class="cards">
+        <div class="card">
+          <div class="card-label">最近下载时间</div>
+          <div class="card-value" id="stat-download-time">--</div>
+        </div>
+        <div class="card">
+          <div class="card-label">最近转换时间</div>
+          <div class="card-value" id="stat-convert-time">--</div>
+        </div>
+        <div class="card">
+          <div class="card-label">RTCM3 文件大小</div>
+          <div class="card-value" id="stat-rtcm3-size">--</div>
+        </div>
+        <div class="card">
+          <div class="card-label">调度器状态</div>
+          <div class="card-value" id="stat-scheduler">--</div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <h3>操作</h3>
+          <div class="panel-actions">
+            <button id="manual-download-btn" class="btn btn-primary">立即下载并转换</button>
+            <a id="download-rtcm3-btn" class="btn" href="/api/rtcm3/latest" target="_blank">下载 RTCM3 文件</a>
+          </div>
+        </div>
+        <div id="operation-result" class="operation-result"></div>
+        <div class="info-box">
+          <strong>终端设备获取星历接口：</strong>
+          <code>GET /api/rtcm3/latest</code> — 返回最新 RTCM3 广播星历文件
+          <br>
+          <strong>文件信息接口：</strong>
+          <code>GET /api/rtcm3/info</code> — 返回文件可用性与大小
+        </div>
+      </div>
+    </section>
+
+    <!-- 数据源管理 -->
+    <section id="tab-sources" class="tab-pane">
+      <div class="panel">
+        <div class="panel-header">
+          <h3>数据源列表</h3>
+          <button id="add-source-btn" class="btn btn-primary">+ 添加数据源</button>
+        </div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>名称</th>
+                <th>协议</th>
+                <th>URL 模板</th>
+                <th>用户名</th>
+                <th>优先级</th>
+                <th>启用</th>
+                <th>最近状态</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="sources-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- 下载日志 -->
+    <section id="tab-logs" class="tab-pane">
+      <div class="panel">
+        <div class="panel-header">
+          <h3>下载日志</h3>
+          <button id="refresh-logs-btn" class="btn">刷新</button>
+        </div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>时间</th>
+                <th>数据源</th>
+                <th>状态</th>
+                <th>文件</th>
+                <th>信息</th>
+              </tr>
+            </thead>
+            <tbody id="logs-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- 数据源编辑弹窗 -->
+<div id="source-modal" class="modal hidden">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3 id="modal-title">添加数据源</h3>
+      <button class="modal-close" onclick="closeModal()">&times;</button>
+    </div>
+    <form id="source-form">
+      <input type="hidden" id="source-id">
+      <div class="form-row">
+        <label>名称 *</label>
+        <input type="text" id="source-name" required>
+      </div>
+      <div class="form-row">
+        <label>协议</label>
+        <select id="source-protocol">
+          <option value="https">https</option>
+          <option value="http">http</option>
+          <option value="ftp">ftp</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label>URL 模板 *</label>
+        <input type="text" id="source-url" required placeholder="支持 {year} {yy} {doy} 占位符">
+      </div>
+      <div class="form-row">
+        <label>用户名</label>
+        <input type="text" id="source-username" placeholder="匿名访问留空">
+      </div>
+      <div class="form-row">
+        <label>密码</label>
+        <input type="password" id="source-password" placeholder="匿名访问留空">
+      </div>
+      <div class="form-row">
+        <label>优先级（数字越小越优先）</label>
+        <input type="number" id="source-priority" value="10">
+      </div>
+      <div class="form-row">
+        <label>备注</label>
+        <textarea id="source-remark" rows="2"></textarea>
+      </div>
+      <div class="form-row">
+        <label><input type="checkbox" id="source-enabled" checked> 启用</label>
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn" onclick="closeModal()">取消</button>
+        <button type="submit" class="btn btn-primary">保存</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>
