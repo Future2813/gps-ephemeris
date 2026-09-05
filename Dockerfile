@@ -4,13 +4,15 @@ FROM python:3.12-alpine AS builder
 # 安装 RTKLIB 编译依赖
 RUN apk add --no-cache \
     build-base \
-    git \
-    cmake \
+    curl \
+    tar \
     linux-headers
 
-# 克隆并编译 RTKLIB（convbin + str2str 用于 RINEX -> RTCM3 转换）
+# 下载 RTKLIB 源码 tarball 并编译（convbin + str2str 用于 RINEX -> RTCM3 转换）
 # 手动编译：先编译核心库 librtk.a，再编译 convbin 和 str2str
-RUN git clone --depth 1 -b rtklib_2.4.3 https://github.com/tomojitakasu/RTKLIB.git /tmp/rtklib \
+RUN curl -L -o /tmp/rtklib.tar.gz https://github.com/tomojitakasu/RTKLIB/archive/refs/heads/rtklib_2.4.3.tar.gz \
+    && tar -xzf /tmp/rtklib.tar.gz -C /tmp \
+    && mv /tmp/RTKLIB-rtklib_2.4.3 /tmp/rtklib \
     && cd /tmp/rtklib/src \
     && gcc -c -O2 -Wall -Wno-unused-but-set-variable -Wno-unused-variable \
          -DENAGLO -DENAGAL -DENAQZS -DENACMP -DENAIRN \
@@ -22,7 +24,7 @@ RUN git clone --depth 1 -b rtklib_2.4.3 https://github.com/tomojitakasu/RTKLIB.g
     && cd /tmp/rtklib/app/str2str \
     && gcc -O2 -Wall -I../../src -o str2str str2str.c -L../../src -lrtk -lm -lpthread \
     && cp str2str /usr/local/bin/ \
-    && rm -rf /tmp/rtklib
+    && rm -rf /tmp/rtklib /tmp/rtklib.tar.gz
 
 # 最终运行阶段
 FROM python:3.12-alpine
