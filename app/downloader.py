@@ -41,8 +41,9 @@ def render_url(template: str, dt: datetime) -> str:
 
 
 def _decompress_z(data: bytes) -> bytes:
-    """解压 .Z (LZW) 文件，使用系统 uncompress 命令"""
+    """解压 .Z (LZW) 文件，依次尝试 uncompress / gunzip / Python gzip"""
     import subprocess
+    # 尝试 1: uncompress 命令
     try:
         proc = subprocess.run(
             ["uncompress", "-c"],
@@ -50,15 +51,34 @@ def _decompress_z(data: bytes) -> bytes:
             capture_output=True,
             timeout=60,
         )
-        if proc.returncode == 0:
+        if proc.returncode == 0 and proc.stdout:
             return proc.stdout
+    except FileNotFoundError:
+        pass
     except Exception as e:
         logger.warning("uncompress 失败: %s", e)
-    # 回退：尝试 gzip（有些 .Z 实际是 gzip）
+    # 尝试 2: gunzip 命令（GNU gunzip 支持 .Z）
+    try:
+        proc = subprocess.run(
+            ["gunzip", "-c"],
+            input=data,
+            capture_output=True,
+            timeout=60,
+        )
+        if proc.returncode == 0 and proc.stdout:
+            return proc.stdout
+    except FileNotFoundError:
+        pass
+    except Exception as e:
+        logger.warning("gunzip 失败: %s", e)
+    # 尝试 3: Python gzip（有些 .Z 实际是 gzip）
     try:
         return gzip.decompress(data)
     except Exception:
-        return data
+        pass
+    # 无法解压，返回原始数据
+    logger.warning("无法解压 .Z 文件，将保留原始数据")
+    return data
 
 
 def _decompress(data: bytes, filename: str) -> bytes:
