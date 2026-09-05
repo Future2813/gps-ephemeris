@@ -4,17 +4,19 @@ FROM python:3.12-slim AS builder
 # 替换为国内镜像源（清华源），加速系统包下载
 RUN sed -i 's/deb.debian.org/mirrors.tuna.tsinghua.edu.cn/g' /etc/apt/sources.list.d/debian.sources
 
-# 安装编译依赖
+# 安装编译依赖（包括 ca-certificates）
 RUN apt-get update && apt-get install -y \
     gcc \
     make \
     wget \
     tar \
     libc6-dev \
+    ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# 下载 RTKLIB 源码包（官方 2.4.3），增加重试和超时
-RUN wget -q --tries=10 --timeout=60 \
+# 下载 RTKLIB 源码包（增加 --no-check-certificate 作为临时测试，但先不用）
+# 移除 -q 以便查看具体错误
+RUN wget --tries=10 --timeout=60 \
     https://github.com/tomojitakasu/RTKLIB/archive/refs/tags/2.4.3.tar.gz \
     -O /tmp/rtklib.tar.gz || \
     (echo "Failed to download RTKLIB from GitHub, please check network or manually place the file" && exit 1)
@@ -35,8 +37,8 @@ RUN tar -xzf /tmp/rtklib.tar.gz -C /tmp \
     && cp str2str /usr/local/bin/ \
     && rm -rf /tmp/rtklib /tmp/rtklib.tar.gz
 
-# 下载 gfzrnx（约 2MB），同样增加重试和超时
-RUN wget -q --tries=10 --timeout=60 \
+# 下载 gfzrnx（同样添加 ca-certificates 后应该没问题）
+RUN wget --tries=10 --timeout=60 \
     https://download.gfz-potsdam.de/gnss/products/GFZRNX/GFZRNX_linux_64bit.tar.gz \
     -O /tmp/gfzrnx.tar.gz || \
     (echo "Failed to download gfzrnx from GFZ, please check network or manually place the file" && exit 1) \
