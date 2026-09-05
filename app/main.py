@@ -32,44 +32,34 @@ def seed_default_sources():
     try:
         defaults = [
             {
-                "name": "武汉 IGS (CDIS)",
+                "name": "武汉 IGS",
                 "protocol": "ftp",
-                "url_template": "ftp://igs.gnsswhu.cn/pub/gnss/data/daily/{year}/{doy}/{yy}p/BRDC00IGS_R_{year}{doy}0000_01D_MN.rnx.gz",
+                "url_template": "ftp://igs.gnsswhu.cn/pub/gps/data/daily/{year}/brdc/BRD400DLR_S_{year}{doy}0000_01D_MN.rnx.gz",
                 "username": "anonymous",
                 "password": "anonymous@",
                 "enabled": True,
                 "priority": 1,
-                "remark": "武汉大学 IGS 数据中心广播星历，国内最快，匿名 FTP 访问",
-            },
-            {
-                "name": "BKG",
-                "protocol": "https",
-                "url_template": "https://igs.bkg.bund.de/root_ftp/IGS/BRDC/{year}/{doy}/BRDC00IGS_R_{year}{doy}0000_01D_MN.rnx.gz",
-                "username": "",
-                "password": "",
-                "enabled": True,
-                "priority": 2,
-                "remark": "德国 BKG 提供的 IGS 广播星历，无需登录",
+                "remark": "武汉大学 IGS 数据中心，国内最快，RINEX4 多系统广播星历",
             },
             {
                 "name": "IGN (法国)",
                 "protocol": "ftp",
-                "url_template": "ftp://igs.ign.fr/pub/igs/data/{year}/{doy}/BRDC00IGS_R_{year}{doy}0000_01D_MN.rnx.gz",
+                "url_template": "ftp://igs.ign.fr/pub/igs/data/{year}/{doy}/BRDC00IGN_R_{year}{doy}0000_01D_MN.rnx.gz",
                 "username": "anonymous",
                 "password": "anonymous@",
                 "enabled": True,
-                "priority": 3,
-                "remark": "法国 IGN 地理信息局，匿名 FTP，作为备用数据源",
+                "priority": 2,
+                "remark": "法国 IGN 地理信息局，匿名 FTP，多系统广播星历",
             },
             {
-                "name": "IGS (CDDIS)",
+                "name": "BKG",
                 "protocol": "https",
-                "url_template": "https://cddis.nasa.gov/archive/gnss/data/daily/{year}/{doy}/{yy}p/BRDC00IGS_R_{year}{doy}0000_01D_MN.rnx.gz",
+                "url_template": "https://igs.bkg.bund.de/root_ftp/IGS/BRDC/{year}/{doy}/BRDM00DLR_S_{year}{doy}0000_01D_MN.rnx.gz",
                 "username": "",
                 "password": "",
                 "enabled": True,
-                "priority": 4,
-                "remark": "NASA CDDIS 全球 IGS 合并广播星历，需要 Earthdata 账号",
+                "priority": 3,
+                "remark": "德国 BKG 提供的 DLR 多系统广播星历，HTTP 协议，无需登录",
             },
         ]
         for ds in defaults:
@@ -83,7 +73,15 @@ def seed_default_sources():
                 existing.protocol = ds["protocol"]
                 existing.priority = ds["priority"]
                 existing.remark = ds["remark"]
+                existing.enabled = ds["enabled"]
                 logger.info("已更新内置数据源: %s", ds["name"])
+        # 删除已废弃的内置数据源
+        deprecated_names = ["IGS (CDDIS)", "武汉 IGS (CDIS)"]
+        for name in deprecated_names:
+            old = db.query(DataSource).filter(DataSource.name == name).first()
+            if old:
+                db.delete(old)
+                logger.info("已删除废弃数据源: %s", name)
         # 确保系统状态记录存在
         if not db.query(SystemStatus).first():
             db.add(SystemStatus(id=1))
